@@ -59,6 +59,9 @@ public partial class MainWindow : Window
         LoadHotkeySettings();
         UpdateHotkeyText();
         UpdateControllerHotkeyText();
+
+        var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+        VersionLabel.Text = version != null ? $"V{version.Major}.{version.Minor}.{version.Build}" : "V?";
     }
 
     private void ShowErrorWindow(string errorMessage)
