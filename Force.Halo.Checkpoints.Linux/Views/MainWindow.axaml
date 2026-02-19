@@ -245,13 +245,39 @@
         </Button>
 
     </StackPanel>
-    <TextBlock
-        Name="VersionLabel"
-        Foreground="#FF808080"
-        Text=""
-        FontSize="14"
+    <StackPanel
+        Orientation="Horizontal"
         HorizontalAlignment="Right"
         VerticalAlignment="Bottom"
-        Margin="0,0,16,8" />
+        Spacing="8"
+        Margin="0,0,16,8">
+        <Button
+            Name="CheckForUpdateButton"
+            Content="Check for Updates"
+            Foreground="White"
+            FontSize="12"
+            Click="CheckForUpdateButton_OnClick">
+            <Button.Styles>
+                <Style Selector="Button">
+                    <Setter Property="Background" Value="#FF464646" />
+                    <Setter Property="BorderBrush" Value="#FF1E699B" />
+                    <Setter Property="BorderThickness" Value="2" />
+                    <Setter Property="TextElement.Foreground" Value="White" />
+                </Style>
+                <Style Selector="Button:pointerover">
+                    <Setter Property="Background" Value="Gray" />
+                </Style>
+                <Style Selector="Button:pressed">
+                    <Setter Property="Background" Value="#FFCECECE" />
+                </Style>
+            </Button.Styles>
+        </Button>
+        <TextBlock
+            Name="VersionLabel"
+            Foreground="#FF808080"
+            Text=""
+            FontSize="14"
+            VerticalAlignment="Center" />
+    </StackPanel>
     </Grid>
 </Window>

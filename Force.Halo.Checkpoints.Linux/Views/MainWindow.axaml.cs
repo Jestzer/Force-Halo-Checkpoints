@@ -4,8 +4,11 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Net.Http;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
@@ -1228,6 +1231,225 @@ public partial class MainWindow : Window
         };
 
         return keysym != null;
+    }
+
+    private async void CheckForUpdateButton_OnClick(object? sender, RoutedEventArgs e)
+    {
+        var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+        if (version == null)
+        {
+            ShowErrorWindow("Could not determine the current version.");
+            return;
+        }
+
+        Version currentVersion = new(version.Major, version.Minor, version.Build);
+        string latestReleaseUrl = "https://api.github.com/repos/Jestzer/Force.Halo.Checkpoints/releases/latest";
+
+        using HttpClient client = new();
+        client.DefaultRequestHeaders.UserAgent.Add(
+            new System.Net.Http.Headers.ProductInfoHeaderValue("Force.Halo.Checkpoints",
+                $"{version.Major}.{version.Minor}.{version.Build}"));
+        client.DefaultRequestHeaders.Accept.Add(
+            new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+
+        try
+        {
+            string jsonString = await client.GetStringAsync(latestReleaseUrl);
+            using JsonDocument doc = JsonDocument.Parse(jsonString);
+            JsonElement root = doc.RootElement;
+            string latestVersionString = root.GetProperty("tag_name").GetString()!.TrimStart('v');
+            Version latestVersion = new(latestVersionString);
+
+            if (currentVersion.CompareTo(latestVersion) < 0)
+            {
+                // Find the Linux asset URL.
+                string? assetUrl = null;
+                if (root.TryGetProperty("assets", out JsonElement assets))
+                {
+                    foreach (JsonElement asset in assets.EnumerateArray())
+                    {
+                        string? name = asset.GetProperty("name").GetString();
+                        if (name != null && name.Contains("Linux", StringComparison.OrdinalIgnoreCase)
+                                         && name.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase))
+                        {
+                            assetUrl = asset.GetProperty("browser_download_url").GetString();
+                            break;
+                        }
+                    }
+                }
+
+                if (assetUrl == null)
+                {
+                    ShowErrorWindow($"A new version (V{latestVersionString}) is available, but no Linux build was found in the release assets.");
+                    return;
+                }
+
+                await Dispatcher.UIThread.InvokeAsync(async () =>
+                {
+                    UpdateWindow updateWindow = new();
+                    updateWindow.UpdateTextBlock.Text =
+                        $"A new version (V{latestVersionString}) is available!\nYou are currently on V{currentVersion.Major}.{currentVersion.Minor}.{currentVersion.Build}.";
+
+                    if (VisualRoot is Window window)
+                    {
+                        await updateWindow.ShowDialog(window);
+                    }
+                    else
+                    {
+                        updateWindow.Show();
+                    }
+
+                    if (updateWindow.Result == "download")
+                    {
+                        await DownloadUpdateAsync(assetUrl, latestVersionString, false);
+                    }
+                    else if (updateWindow.Result == "replace")
+                    {
+                        await DownloadUpdateAsync(assetUrl, latestVersionString, true);
+                    }
+                });
+            }
+            else
+            {
+                ShowErrorWindow("You are using the latest release available.");
+            }
+        }
+        catch (JsonException ex)
+        {
+            ShowErrorWindow($"Failed to parse the update response: {ex.Message}");
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            ShowErrorWindow($"HTTP error 403: GitHub is saying you're sending too many requests. Try again later.\n\n{ex.Message}");
+        }
+        catch (HttpRequestException ex)
+        {
+            ShowErrorWindow($"HTTP error while checking for updates: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            ShowErrorWindow($"Failed to check for updates. Make sure you're connected to the internet.\n\n{ex.Message}");
+        }
+    }
+
+    private async Task DownloadUpdateAsync(string assetUrl, string versionString, bool replaceAndRestart)
+    {
+        using HttpClient client = new();
+        client.DefaultRequestHeaders.UserAgent.Add(
+            new System.Net.Http.Headers.ProductInfoHeaderValue("Force.Halo.Checkpoints", "1.0.0"));
+
+        try
+        {
+            byte[] data = await client.GetByteArrayAsync(assetUrl);
+            string fileName = $"Force-Halo-Checkpoints-V{versionString}-Linux.tar.gz";
+
+            if (!replaceAndRestart)
+            {
+                string downloadsPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+                Directory.CreateDirectory(downloadsPath);
+                string savePath = Path.Combine(downloadsPath, fileName);
+                await File.WriteAllBytesAsync(savePath, data);
+                ShowErrorWindow($"Downloaded to:\n{savePath}");
+                return;
+            }
+
+            // Download & Replace flow.
+            string tempDir = Path.Combine(Path.GetTempPath(), "ForceHaloCheckpointsUpdate");
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+            Directory.CreateDirectory(tempDir);
+
+            string tarPath = Path.Combine(tempDir, fileName);
+            await File.WriteAllBytesAsync(tarPath, data);
+
+            // Extract the tar.gz.
+            var extractProcess = Process.Start(new ProcessStartInfo
+            {
+                FileName = "tar",
+                Arguments = $"-xzf \"{tarPath}\" -C \"{tempDir}\"",
+                UseShellExecute = false,
+                RedirectStandardError = true
+            });
+
+            if (extractProcess != null)
+            {
+                await extractProcess.WaitForExitAsync();
+                if (extractProcess.ExitCode != 0)
+                {
+                    string error = await extractProcess.StandardError.ReadToEndAsync();
+                    ShowErrorWindow($"Failed to extract the update archive:\n{error}");
+                    return;
+                }
+            }
+
+            // Find the new binary in the extracted files.
+            string? currentExePath = Environment.ProcessPath;
+            if (string.IsNullOrEmpty(currentExePath))
+            {
+                ShowErrorWindow("Could not determine the current executable path.");
+                return;
+            }
+
+            string currentExeName = Path.GetFileName(currentExePath);
+            string[] candidates = Directory.GetFiles(tempDir, currentExeName, SearchOption.AllDirectories);
+
+            if (candidates.Length == 0)
+            {
+                // Try finding any executable file in the extracted directory.
+                candidates = Directory.GetFiles(tempDir, "*", SearchOption.AllDirectories);
+                // Filter to files without extensions or known binary names.
+                var filtered = new List<string>();
+                foreach (string candidate in candidates)
+                {
+                    if (!candidate.EndsWith(".tar.gz") && !candidate.EndsWith(".md"))
+                    {
+                        filtered.Add(candidate);
+                    }
+                }
+                candidates = filtered.ToArray();
+            }
+
+            if (candidates.Length == 0)
+            {
+                ShowErrorWindow("Could not find the new binary in the extracted archive.");
+                return;
+            }
+
+            string newBinary = candidates[0];
+
+            // Copy new binary over current binary.
+            File.Copy(newBinary, currentExePath, overwrite: true);
+
+            // Make it executable.
+            var chmodProcess = Process.Start(new ProcessStartInfo
+            {
+                FileName = "chmod",
+                Arguments = $"+x \"{currentExePath}\"",
+                UseShellExecute = false
+            });
+            chmodProcess?.WaitForExit();
+
+            // Launch the new binary and close the current app.
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = currentExePath,
+                UseShellExecute = false
+            });
+
+            // Close the current application.
+            if (Avalonia.Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                desktop.Shutdown();
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowErrorWindow($"Failed to download the update:\n{ex.Message}");
+        }
     }
 
     private void DetachProcess(int pid)

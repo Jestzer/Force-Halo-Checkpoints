@@ -1,0 +1,112 @@
+<Window xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	mc:Ignorable="d" d:DesignWidth="450" d:DesignHeight="250"
+	x:Class="Force.Halo.Checkpoints.Linux.Views.UpdateWindow"
+	Title="Update Available"
+	Width="450" Height="250"
+	CanResize="False"
+	Icon="/Assets/icon.png"
+	Background="#FF2D2B2B"
+	WindowStartupLocation="CenterOwner">
+	<Grid>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="*" />
+			<RowDefinition Height="Auto" />
+		</Grid.RowDefinitions>
+
+		<TextBlock Name="UpdateTextBlock"
+			HorizontalAlignment="Center"
+			VerticalAlignment="Center"
+			TextAlignment="Center"
+			Background="#FF2D2B2B"
+			Foreground="White"
+			Text="A new version is available!"
+			MaxWidth="410"
+			TextWrapping="Wrap"
+			Margin="20,0,20,20" />
+
+		<StackPanel Grid.Row="1"
+			Orientation="Horizontal"
+			HorizontalAlignment="Center"
+			Spacing="10"
+			Margin="0,0,0,20">
+			<Button Name="DownloadOnlyButton"
+				Click="DownloadOnlyButton_Click"
+				Height="40"
+				Width="130">
+				<Button.Content>
+					<TextBlock Text="Download Only"
+						HorizontalAlignment="Center"
+						VerticalAlignment="Center"
+						Foreground="White" />
+				</Button.Content>
+				<Button.Styles>
+					<Style Selector="Button">
+						<Setter Property="Background" Value="#FF464646" />
+						<Setter Property="BorderBrush" Value="#FF1E699B" />
+						<Setter Property="BorderThickness" Value="2" />
+						<Setter Property="TextElement.Foreground" Value="White" />
+					</Style>
+					<Style Selector="Button:pointerover">
+						<Setter Property="Background" Value="Gray" />
+					</Style>
+					<Style Selector="Button:pressed">
+						<Setter Property="Background" Value="#FFCECECE" />
+					</Style>
+				</Button.Styles>
+			</Button>
+			<Button Name="DownloadReplaceButton"
+				Click="DownloadReplaceButton_Click"
+				Height="40"
+				Width="160">
+				<Button.Content>
+					<TextBlock Text="Download &amp; Replace"
+						HorizontalAlignment="Center"
+						VerticalAlignment="Center"
+						Foreground="White" />
+				</Button.Content>
+				<Button.Styles>
+					<Style Selector="Button">
+						<Setter Property="Background" Value="#FF464646" />
+						<Setter Property="BorderBrush" Value="#FF1E699B" />
+						<Setter Property="BorderThickness" Value="2" />
+						<Setter Property="TextElement.Foreground" Value="White" />
+					</Style>
+					<Style Selector="Button:pointerover">
+						<Setter Property="Background" Value="Gray" />
+					</Style>
+					<Style Selector="Button:pressed">
+						<Setter Property="Background" Value="#FFCECECE" />
+					</Style>
+				</Button.Styles>
+			</Button>
+			<Button Name="CloseButton"
+				Click="CloseButton_Click"
+				Height="40"
+				Width="90">
+				<Button.Content>
+					<TextBlock Text="Close"
+						HorizontalAlignment="Center"
+						VerticalAlignment="Center"
+						Foreground="White" />
+				</Button.Content>
+				<Button.Styles>
+					<Style Selector="Button">
+						<Setter Property="Background" Value="#FF464646" />
+						<Setter Property="BorderBrush" Value="#FF1E699B" />
+						<Setter Property="BorderThickness" Value="2" />
+						<Setter Property="TextElement.Foreground" Value="White" />
+					</Style>
+					<Style Selector="Button:pointerover">
+						<Setter Property="Background" Value="Gray" />
+					</Style>
+					<Style Selector="Button:pressed">
+						<Setter Property="Background" Value="#FFCECECE" />
+					</Style>
+				</Button.Styles>
+			</Button>
+		</StackPanel>
+	</Grid>
+</Window>

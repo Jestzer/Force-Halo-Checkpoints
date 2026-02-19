@@ -1,4 +1,6 @@
 ﻿using System.Diagnostics;
+using System.IO;
+using System.IO.Compression;
 using System.Media;
 using System.Net.Http;
 using System.Runtime.InteropServices;
@@ -535,15 +537,43 @@ namespace Force.Halo.Checkpoints
                     // Compare the current version with the latest version.
                     if (currentVersion.CompareTo(latestVersion) < 0)
                     {
-                        // A newer version is available!
-                        ErrorWindow errorWindow = new();
-                        errorWindow.Owner = this;
-                        errorWindow.ErrorTextBlock.Text = "";
-                        errorWindow.URLTextBlock.IsEnabled = true;
-                        errorWindow.URLTextBlock.Visibility = Visibility.Visible;
-                        errorWindow.Title = "Check for updates";
-                        errorWindow.ShowDialog();
-                        errorWindow.URLTextBlock.IsEnabled = false;
+                        // Find the Windows asset URL.
+                        string? assetUrl = null;
+                        if (root.TryGetProperty("assets", out JsonElement assets))
+                        {
+                            foreach (JsonElement asset in assets.EnumerateArray())
+                            {
+                                string? name = asset.GetProperty("name").GetString();
+                                if (name != null && name.Contains("Windows", StringComparison.OrdinalIgnoreCase)
+                                                  && name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    assetUrl = asset.GetProperty("browser_download_url").GetString();
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (assetUrl == null)
+                        {
+                            ShowUpdateWindow($"A new version (V{latestVersionString}) is available, but no Windows build was found in the release assets.", "Check for updates");
+                            return;
+                        }
+
+                        // Show the new UpdateWindow with download options.
+                        UpdateWindow updateWindow = new();
+                        updateWindow.Owner = this;
+                        updateWindow.UpdateTextBlock.Text =
+                            $"A new version (V{latestVersionString}) is available!\nYou are currently on V{PackageVersion}.";
+                        updateWindow.ShowDialog();
+
+                        if (updateWindow.Result == "download")
+                        {
+                            await DownloadUpdateAsync(assetUrl, latestVersionString, false);
+                        }
+                        else if (updateWindow.Result == "replace")
+                        {
+                            await DownloadUpdateAsync(assetUrl, latestVersionString, true);
+                        }
                     }
                     else
                     {
@@ -568,6 +598,82 @@ namespace Force.Halo.Checkpoints
             {
                 ShowUpdateWindow("Oh dear, it looks this program had a hard time making the needed connection to GitHub. Make sure you're connected to the internet " +
                     "and your lousy firewall/VPN isn't blocking the connection. Here's the automated error message: \"" + ex.Message + "\"", "Check for updates");
+            }
+        }
+
+        private async Task DownloadUpdateAsync(string assetUrl, string versionString, bool replaceAndRestart)
+        {
+            using HttpClient client = new();
+            client.DefaultRequestHeaders.UserAgent.Add(
+                new System.Net.Http.Headers.ProductInfoHeaderValue("Force.Halo.Checkpoints", PackageVersion));
+
+            try
+            {
+                byte[] data = await client.GetByteArrayAsync(assetUrl);
+                string fileName = $"Force-Halo-Checkpoints-V{versionString}-Windows.zip";
+
+                if (!replaceAndRestart)
+                {
+                    string downloadsPath = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+                    Directory.CreateDirectory(downloadsPath);
+                    string savePath = Path.Combine(downloadsPath, fileName);
+                    File.WriteAllBytes(savePath, data);
+                    ShowUpdateWindow($"Downloaded to:\n{savePath}", "Download Complete");
+                    return;
+                }
+
+                // Download & Replace flow.
+                string tempDir = Path.Combine(Path.GetTempPath(), "ForceHaloCheckpointsUpdate");
+                if (Directory.Exists(tempDir))
+                {
+                    Directory.Delete(tempDir, true);
+                }
+                Directory.CreateDirectory(tempDir);
+
+                string zipPath = Path.Combine(tempDir, fileName);
+                File.WriteAllBytes(zipPath, data);
+
+                // Extract the zip.
+                string extractDir = Path.Combine(tempDir, "extracted");
+                ZipFile.ExtractToDirectory(zipPath, extractDir);
+
+                // Get the current app directory and executable name.
+                string? currentExePath = Environment.ProcessPath;
+                if (string.IsNullOrEmpty(currentExePath))
+                {
+                    ShowUpdateWindow("Could not determine the current executable path.", "Update Error");
+                    return;
+                }
+
+                string appDir = Path.GetDirectoryName(currentExePath)!;
+                string exeName = Path.GetFileName(currentExePath);
+
+                // Write a batch script that waits for us to exit, copies new files, and relaunches.
+                string batchPath = Path.Combine(tempDir, "update.bat");
+                string batchContent = $"""
+                    @echo off
+                    timeout /t 2 /nobreak >nul
+                    xcopy /s /y /q "{extractDir}\*" "{appDir}\"
+                    start "" "{Path.Combine(appDir, exeName)}"
+                    del "%~f0"
+                    """;
+                File.WriteAllText(batchPath, batchContent);
+
+                // Launch the batch script and close the current app.
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c \"{batchPath}\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
+
+                Application.Current.Shutdown();
+            }
+            catch (Exception ex)
+            {
+                ShowUpdateWindow($"Failed to download the update:\n{ex.Message}", "Update Error");
             }
         }
 
