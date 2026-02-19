@@ -7,13 +7,14 @@
     xmlns:vm="using:Force.Halo.Checkpoints.Linux.ViewModels"
     Title="Force Halo Checkpoints"
     Width="560"
-    Height="500"
+    Height="490"
     CanResize="False"
     x:DataType="vm:MainWindowViewModel"
     Background="#FF2D2B2B"
     Icon="/Assets/icon.png"
     WindowStartupLocation="CenterScreen">
 
+    <Grid>
     <StackPanel Margin="16" Spacing="12">
         <Border
             Background="#FF3A3838"
@@ -242,5 +243,15 @@
                 </Style>
             </Button.Styles>
         </Button>
+
     </StackPanel>
+    <TextBlock
+        Name="VersionLabel"
+        Foreground="#FF808080"
+        Text=""
+        FontSize="14"
+        HorizontalAlignment="Right"
+        VerticalAlignment="Bottom"
+        Margin="0,0,16,8" />
+    </Grid>
 </Window>
