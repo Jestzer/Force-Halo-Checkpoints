@@ -218,10 +218,49 @@
             Text="Checkpoint status: Idle"
             TextWrapping="Wrap" />
 
+
+    </StackPanel>
+    <DockPanel
+        VerticalAlignment="Bottom"
+        Margin="16,0,16,8">
+        <StackPanel
+            Orientation="Horizontal"
+            DockPanel.Dock="Right"
+            Spacing="8"
+            VerticalAlignment="Center">
+            <Button
+                Name="CheckForUpdateButton"
+                Content="Check for Updates"
+                Foreground="White"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center"
+                Click="CheckForUpdateButton_OnClick">
+                <Button.Styles>
+                    <Style Selector="Button">
+                        <Setter Property="Background" Value="#FF464646" />
+                        <Setter Property="BorderBrush" Value="#FF1E699B" />
+                        <Setter Property="BorderThickness" Value="2" />
+                        <Setter Property="TextElement.Foreground" Value="White" />
+                    </Style>
+                    <Style Selector="Button:pointerover">
+                        <Setter Property="Background" Value="Gray" />
+                    </Style>
+                    <Style Selector="Button:pressed">
+                        <Setter Property="Background" Value="#FFCECECE" />
+                    </Style>
+                </Button.Styles>
+            </Button>
+            <TextBlock
+                Name="VersionLabel"
+                Foreground="#FFBFBFBF"
+                Text=""
+                VerticalAlignment="Center" />
+        </StackPanel>
         <Button
             Name="ForceCheckpointButton"
             Content="Force Checkpoint"
             Foreground="White"
+            HorizontalAlignment="Left"
             Click="ForceCheckpointButton_OnClick">
             <Button.Styles>
                 <Style Selector="Button">
@@ -243,41 +282,6 @@
                 </Style>
             </Button.Styles>
         </Button>
-
-    </StackPanel>
-    <StackPanel
-        Orientation="Horizontal"
-        HorizontalAlignment="Right"
-        VerticalAlignment="Bottom"
-        Spacing="8"
-        Margin="0,0,16,8">
-        <Button
-            Name="CheckForUpdateButton"
-            Content="Check for Updates"
-            Foreground="White"
-            FontSize="12"
-            Click="CheckForUpdateButton_OnClick">
-            <Button.Styles>
-                <Style Selector="Button">
-                    <Setter Property="Background" Value="#FF464646" />
-                    <Setter Property="BorderBrush" Value="#FF1E699B" />
-                    <Setter Property="BorderThickness" Value="2" />
-                    <Setter Property="TextElement.Foreground" Value="White" />
-                </Style>
-                <Style Selector="Button:pointerover">
-                    <Setter Property="Background" Value="Gray" />
-                </Style>
-                <Style Selector="Button:pressed">
-                    <Setter Property="Background" Value="#FFCECECE" />
-                </Style>
-            </Button.Styles>
-        </Button>
-        <TextBlock
-            Name="VersionLabel"
-            Foreground="#FF808080"
-            Text=""
-            FontSize="14"
-            VerticalAlignment="Center" />
-    </StackPanel>
+    </DockPanel>
     </Grid>
 </Window>
