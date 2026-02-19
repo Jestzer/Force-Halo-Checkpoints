@@ -13,7 +13,6 @@ namespace Force.Halo.Checkpoints
 {
     public partial class MainWindow : Window
     {
-        private readonly uint currentHotkey = 0;
         public string rawHotKeyString = string.Empty;
         public string gameSelected = string.Empty;
         public string friendlyGameName = string.Empty;
@@ -21,11 +20,11 @@ namespace Force.Halo.Checkpoints
         private readonly Thread? antiCheatCheckThread;
         private ushort controllerButtonSelected = 0;
         public string controllerTriggerSelected = string.Empty;
-        bool isControllerButtonSelected = false;
-        bool isRecordControllerInputDone = true;
-        bool isButtonCoolDownHappening = false;
-        bool isProgramClosing = false;
-        private bool isErrorWindowOpen = false;
+        volatile bool isControllerButtonSelected = false;
+        volatile bool isRecordControllerInputDone = true;
+        volatile bool isButtonCoolDownHappening = false;
+        volatile bool isProgramClosing = false;
+        private volatile bool isErrorWindowOpen = false;
         int failureCount = 0;
         bool isUsingWindowsStoreMCC = false;
 
@@ -38,6 +37,9 @@ namespace Force.Halo.Checkpoints
 
         [DllImport("kernel32.dll")]
         public static extern IntPtr OpenProcess(int dwDesiredAccess, bool bInheritHandle, int dwProcessId);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern bool CloseHandle(IntPtr hObject);
 
         [DllImport("kernel32.dll")]
         public static extern bool ReadProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, int dwSize, out int lpNumberOfBytesRead);
@@ -198,11 +200,8 @@ namespace Force.Halo.Checkpoints
         }
         private static void DisclaimerWindow()
         {
-            if (Properties.Settings.Default.IsControllerButtonSelectedPreference == false)
-            {
-                DisclaimerWindow disclaimerWindow = new();
-                disclaimerWindow.ShowDialog();
-            }
+            DisclaimerWindow disclaimerWindow = new();
+            disclaimerWindow.ShowDialog();
         }
         private void CheckForAntiCheatRunning()
         {
@@ -249,9 +248,10 @@ namespace Force.Halo.Checkpoints
                         const int PROCESS_VM_OPERATION = 0x0008;
                         string dllName = "xlive.dll";
                         int offset = 0x4E68FF;
+                        IntPtr processHandle = IntPtr.Zero;
                         try
                         {
-                            IntPtr processHandle = OpenProcess(PROCESS_WM_READ | PROCESS_VM_OPERATION, false, processID);
+                            processHandle = OpenProcess(PROCESS_WM_READ | PROCESS_VM_OPERATION, false, processID);
                             IntPtr dllBaseAddress = GetModuleBaseAddress(processID, dllName);
 
                             if (dllBaseAddress == IntPtr.Zero)
@@ -300,11 +300,8 @@ namespace Force.Halo.Checkpoints
 
                             if (failureCount < 3)
                             {
-                                Dispatcher.Invoke(() =>
-                                {
-                                    // Give Halo 2 Vista in all its old, terribleness, 3 seconds to breathe.
-                                    Thread.Sleep(1000);
-                                });
+                                // Give Halo 2 Vista in all its old, terribleness, 3 seconds to breathe.
+                                Thread.Sleep(1000);
                             }
                             else
                             {
@@ -314,6 +311,13 @@ namespace Force.Halo.Checkpoints
                                     gameSelected = string.Empty;
                                     StatusTextBlock.Text = "Status: Issue with H2V.";
                                 });
+                            }
+                        }
+                        finally
+                        {
+                            if (processHandle != IntPtr.Zero)
+                            {
+                                CloseHandle(processHandle);
                             }
                         }
                     }
@@ -328,74 +332,82 @@ namespace Force.Halo.Checkpoints
                         });
                     }
                 }
+                Thread.Sleep(2000);
             }
         }
 
         private async void CheckControllerInput()
         {
-            while (true)
+            try
             {
-                if (!isButtonCoolDownHappening)
+                while (true)
                 {
-                    if (isControllerButtonSelected && isRecordControllerInputDone)
+                    if (!isButtonCoolDownHappening)
                     {
-                        XInputState state = new();
-                        int result = XInputGetState(0, ref state); // 0 is the first controller.
-
-                        if (result == 0) // Controller is connected.
+                        if (isControllerButtonSelected && isRecordControllerInputDone)
                         {
-                            if ((state.Gamepad.wButtons & controllerButtonSelected) != 0)
+                            XInputState state = new();
+                            int result = XInputGetState(0, ref state); // 0 is the first controller.
+
+                            if (result == 0) // Controller is connected.
                             {
-                                _ = Dispatcher.Invoke(() =>
+                                if ((state.Gamepad.wButtons & controllerButtonSelected) != 0)
                                 {
-                                    ForceCheckpointButton_Click(this, new RoutedEventArgs());
-                                    return Task.CompletedTask;
-                                });
-                            }
-                            // Triggers need to be handled separately.
-                            else if (controllerTriggerSelected == "Left Trigger")
-                            {
-                                if (state.Gamepad.bLeftTrigger > triggerThreshold)
-                                {
-                                    Dispatcher.Invoke(() =>
+                                    _ = Dispatcher.Invoke(() =>
                                     {
                                         ForceCheckpointButton_Click(this, new RoutedEventArgs());
+                                        return Task.CompletedTask;
                                     });
                                 }
-                            }
-                            else if (controllerTriggerSelected == "Right Trigger")
-                            {
-                                if (state.Gamepad.bRightTrigger > triggerThreshold)
+                                // Triggers need to be handled separately.
+                                else if (controllerTriggerSelected == "Left Trigger")
                                 {
-                                    Dispatcher.Invoke(() =>
+                                    if (state.Gamepad.bLeftTrigger > triggerThreshold)
                                     {
-                                        ForceCheckpointButton_Click(this, new RoutedEventArgs());
-                                    });
+                                        Dispatcher.Invoke(() =>
+                                        {
+                                            ForceCheckpointButton_Click(this, new RoutedEventArgs());
+                                        });
+                                    }
+                                }
+                                else if (controllerTriggerSelected == "Right Trigger")
+                                {
+                                    if (state.Gamepad.bRightTrigger > triggerThreshold)
+                                    {
+                                        Dispatcher.Invoke(() =>
+                                        {
+                                            ForceCheckpointButton_Click(this, new RoutedEventArgs());
+                                        });
+                                    }
                                 }
                             }
+                            // Sleep to supposedly prevent high CPU usage.
+                            Thread.Sleep(100);
                         }
-                        // Sleep to supposedly prevent high CPU usage.
-                        Thread.Sleep(100);
+                    }
+                    // Prevent the user from triggering a checkpoint while selecting their controller button binding. Wait 2 seconds.
+                    else
+                    {
+                        Dispatcher.Invoke(() => // Gotta use these to play around with the UI.
+                        {
+                            RecordControllerInputButton.Content = "Please wait 2 seconds.";
+                            RecordControllerInputButton.IsEnabled = false;
+                        });
+
+                        await Task.Delay(2000);
+                        isButtonCoolDownHappening = false;
+
+                        Dispatcher.Invoke(() =>
+                        {
+                            RecordControllerInputButton.Content = "Start Recording Input";
+                            RecordControllerInputButton.IsEnabled = true;
+                        });
                     }
                 }
-                // Prevent the user from triggering a checkpoint while selecting their controller button binding. Wait 2 seconds.
-                else
-                {
-                    Dispatcher.Invoke(() => // Gotta use these to play around with the UI.
-                    {
-                        RecordControllerInputButton.Content = "Please wait 2 seconds.";
-                        RecordControllerInputButton.IsEnabled = false;
-                    });
-
-                    await Task.Delay(2000);
-                    isButtonCoolDownHappening = false;
-
-                    Dispatcher.Invoke(() =>
-                    {
-                        RecordControllerInputButton.Content = "Start Recording Input";
-                        RecordControllerInputButton.IsEnabled = true;
-                    });
-                }
+            }
+            catch (Exception)
+            {
+                // Prevent unhandled exceptions from crashing the process since this is async void.
             }
         }
 
@@ -573,9 +585,9 @@ namespace Force.Halo.Checkpoints
         [GeneratedRegex("Num Pad")]
         private static partial Regex NumPadToNumberPad();
 
-        private void RegisterCurrentHotkey(string rawHotKeyString)
+        private void RegisterCurrentHotkey(string hotKeyString)
         {
-            string hotkeyName = rawHotKeyString.ToUpper();
+            string hotkeyName = hotKeyString.ToUpper();
 
             // Convert the key name to a Key enumeration, so it can actually be used.
             try
@@ -589,9 +601,10 @@ namespace Force.Halo.Checkpoints
                     rawHotKeyString = string.Empty;
                     ShowErrorWindow($"You may not use Enter/Return as your hotkey.");
                     UnregisterCurrentHotkey();
+                    return;
                 }
 
-                KeyBindingTextBox.Text = rawHotKeyString;
+                KeyBindingTextBox.Text = hotKeyString;
                 KeyBindingTextBox.Text = SpacesForNonFirstUppercaseLetters().Replace(KeyBindingTextBox.Text, " $1");
                 KeyBindingTextBox.Text = RemoveLetterDFromNumber().Replace(KeyBindingTextBox.Text, "$1");
                 KeyBindingTextBox.Text = NumPadToNumberPad().Replace(KeyBindingTextBox.Text, "Number Pad ");
@@ -623,7 +636,7 @@ namespace Force.Halo.Checkpoints
             catch (Exception ex)
             {
                 KeyBindingTextBox.Text = string.Empty;
-                rawHotKeyString = string.Empty; // This is here because likely something went wrong, so yes, Visual Studio, it technically isn't necessary.
+                rawHotKeyString = string.Empty;
                 ShowErrorWindow($"Oh dear, you've ran into an error. Here's the automatic message: " + ex.Message);
                 UnregisterCurrentHotkey();
                 return;
@@ -812,6 +825,7 @@ namespace Force.Halo.Checkpoints
         {
             mccGameIsRunning = true;
             string processName = string.Empty;
+            IntPtr processHandle = IntPtr.Zero;
             try
             {
                 const int PROCESS_WM_READ = 0x0010;
@@ -827,7 +841,7 @@ namespace Force.Halo.Checkpoints
 
                 int processID = GetProcessIdByName(processName);
 
-                IntPtr processHandle = OpenProcess(PROCESS_WM_READ | PROCESS_VM_OPERATION, false, processID);
+                processHandle = OpenProcess(PROCESS_WM_READ | PROCESS_VM_OPERATION, false, processID);
                 IntPtr dllBaseAddress = GetModuleBaseAddress(processID, dllName);
 
                 if (dllBaseAddress == IntPtr.Zero)
@@ -898,10 +912,18 @@ namespace Force.Halo.Checkpoints
                 ShowErrorWindow($"The attempt to check {friendlyGameName} in The Master Chief Collection failed. " +
                     "This is the automatic error message that was produced: " + ex.Message);
             }
+            finally
+            {
+                if (processHandle != IntPtr.Zero)
+                {
+                    CloseHandle(processHandle);
+                }
+            }
         }
 
         private void ForceCheckpoint(string gameSelected, string dllName, int offset)
         {
+            IntPtr processHandle = IntPtr.Zero;
             try
             {
                 string processName = string.Empty;
@@ -947,7 +969,7 @@ namespace Force.Halo.Checkpoints
                 const int PROCESS_WM_WRITE = 0x0020;
                 const int PROCESS_VM_OPERATION = 0x0008;
 
-                IntPtr processHandle = OpenProcess(PROCESS_WM_READ | PROCESS_WM_WRITE | PROCESS_VM_OPERATION, false, processID);
+                processHandle = OpenProcess(PROCESS_WM_READ | PROCESS_WM_WRITE | PROCESS_VM_OPERATION, false, processID);
 
                 // Get the base address of the DLL in the process's memory space.
                 IntPtr dllBaseAddress = GetModuleBaseAddress(processID, dllName);
@@ -991,6 +1013,13 @@ namespace Force.Halo.Checkpoints
                 {
                     ShowErrorWindow("The attempt to force a checkpoint failed. This is the automatic error message: " + ex.Message);
                     return;
+                }
+            }
+            finally
+            {
+                if (processHandle != IntPtr.Zero)
+                {
+                    CloseHandle(processHandle);
                 }
             }
         }
@@ -1168,15 +1197,25 @@ namespace Force.Halo.Checkpoints
         {
             // Get all processes with the specified name.
             Process[] processes = Process.GetProcessesByName(processName);
-            if (processes.Length > 0)
+            try
             {
-                // Return the PID of the first process found.
-                return processes[0].Id;
+                if (processes.Length > 0)
+                {
+                    // Return the PID of the first process found.
+                    return processes[0].Id;
+                }
+                else
+                {
+                    // No process found with the specified name.
+                    return -1;
+                }
             }
-            else
+            finally
             {
-                // No process found with the specified name.
-                return -1;
+                foreach (Process process in processes)
+                {
+                    process.Dispose();
+                }
             }
         }
 
@@ -1185,13 +1224,16 @@ namespace Force.Halo.Checkpoints
             IntPtr moduleBaseAddress = IntPtr.Zero;
             IntPtr[] moduleHandles = new IntPtr[1024];
 
-            if (EnumProcessModulesEx(Process.GetProcessById(processID).Handle, moduleHandles, IntPtr.Size * moduleHandles.Length, out int bytesNeeded, 0x03))
+            using Process process = Process.GetProcessById(processID);
+            IntPtr processHandle = process.Handle;
+
+            if (EnumProcessModulesEx(processHandle, moduleHandles, IntPtr.Size * moduleHandles.Length, out int bytesNeeded, 0x03))
             {
                 int numOfModules = bytesNeeded / IntPtr.Size;
                 for (int i = 0; i < numOfModules; i++)
                 {
                     StringBuilder sbModuleName = new StringBuilder(255);
-                    if (GetModuleBaseName(Process.GetProcessById(processID).Handle, moduleHandles[i], sbModuleName, sbModuleName.Capacity) > 0)
+                    if (GetModuleBaseName(processHandle, moduleHandles[i], sbModuleName, sbModuleName.Capacity) > 0)
                     {
                         if (sbModuleName.ToString().Equals(moduleName, StringComparison.OrdinalIgnoreCase))
                         {

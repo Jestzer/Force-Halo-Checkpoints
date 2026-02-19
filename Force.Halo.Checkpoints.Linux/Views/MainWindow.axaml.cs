@@ -138,8 +138,15 @@ public partial class MainWindow : Window
             bool successfullyWroteToMemory = false;
             while (attempts < 60 && !successfullyWroteToMemory)
             {
-                IntPtr valuePtr = new(value);
-                if (ptrace(PtracePokedata, pid, targetAddress, valuePtr) != -1)
+                // PTRACE_POKEDATA writes a full word (8 bytes on x86_64). To avoid overwriting
+                // the 7 adjacent bytes, read the current word first, modify only the target byte,
+                // then write the modified word back.
+                IntPtr currentWord = ptrace(PtracePeekdata, pid, targetAddress, IntPtr.Zero);
+                long wordValue = currentWord.ToInt64();
+                wordValue = (wordValue & ~0xFFL) | (long)value;
+                IntPtr modifiedWord = new IntPtr(wordValue);
+
+                if (ptrace(PtracePokedata, pid, targetAddress, modifiedWord) != -1)
                 {
                     successfullyWroteToMemory = true;
                     break;
@@ -227,63 +234,67 @@ public partial class MainWindow : Window
         }
         else
         {
-            try
+            string gameSelected = _gameSelected;
+            Task.Run(() =>
             {
-                if (_gameSelected == "OGHaloCE")
+                try
                 {
-                    ModifyGameMemory("Halo CE (non-MCC)", "halo.exe", "halo.exe", 0x31973F, 1);
-                }
-                else if (_gameSelected == "MCC")
-                {
-                    string gameName = CheckWhichMCCGameIsRunning(true);
-                    switch (gameName)
+                    if (gameSelected == "OGHaloCE")
                     {
-                        case "Halo CE":
-                            ModifyGameMemory("MCC", "MCC-Win64-Shipping.exe", "halo1.dll", 0x2B23707, 1);
-                            break;
-                        case "Halo 2":
-                            ModifyGameMemory("MCC", "MCC-Win64-Shipping.exe", "halo2.dll", 0xE70D7E, 1);
-                            break;
-                        case "Halo 3":
-                            ModifyGameMemory("MCC", "MCC-Win64-Shipping.exe", "halo3.dll", 0x20B96AC, 1);
-                            break;
-                        case "Halo 4":
-                            ModifyGameMemory("MCC", "MCC-Win64-Shipping.exe", "halo4.dll", 0x293DEAF, 1);
-                            break;
-                        case "Halo 3: ODST":
-                            ModifyGameMemory("MCC", "MCC-Win64-Shipping.exe", "halo3odst.dll", 0x20FF6BC, 1);
-                            break;
-                        case "Halo: Reach":
-                            ModifyGameMemory("MCC", "MCC-Win64-Shipping.exe", "haloreach.dll", 0x263EABE, 1);
-                            break;
-                        case "none":
-                            UpdateAttachStatus(false, "Not attached. Select a game to retry.");
-                            UpdateCheckpointStatus("Checkpoint status: failed (no MCC game detected).");
-                            break;
-                        default:
-                            ShowErrorWindow($"What's the meaning of this? Who are you? How did you get in here?");
-                            return;
+                        ModifyGameMemory("Halo CE (non-MCC)", "halo.exe", "halo.exe", 0x31973F, 1);
+                    }
+                    else if (gameSelected == "MCC")
+                    {
+                        string gameName = CheckWhichMCCGameIsRunning(true);
+                        switch (gameName)
+                        {
+                            case "Halo CE":
+                                ModifyGameMemory("MCC", "MCC-Win64-Shipping.exe", "halo1.dll", 0x2B23707, 1);
+                                break;
+                            case "Halo 2":
+                                ModifyGameMemory("MCC", "MCC-Win64-Shipping.exe", "halo2.dll", 0xE70D7E, 1);
+                                break;
+                            case "Halo 3":
+                                ModifyGameMemory("MCC", "MCC-Win64-Shipping.exe", "halo3.dll", 0x20B96AC, 1);
+                                break;
+                            case "Halo 4":
+                                ModifyGameMemory("MCC", "MCC-Win64-Shipping.exe", "halo4.dll", 0x293DEAF, 1);
+                                break;
+                            case "Halo 3: ODST":
+                                ModifyGameMemory("MCC", "MCC-Win64-Shipping.exe", "halo3odst.dll", 0x20FF6BC, 1);
+                                break;
+                            case "Halo: Reach":
+                                ModifyGameMemory("MCC", "MCC-Win64-Shipping.exe", "haloreach.dll", 0x263EABE, 1);
+                                break;
+                            case "none":
+                                UpdateAttachStatus(false, "Not attached. Select a game to retry.");
+                                UpdateCheckpointStatus("Checkpoint status: failed (no MCC game detected).");
+                                break;
+                            default:
+                                ShowErrorWindow($"What's the meaning of this? Who are you? How did you get in here?");
+                                return;
+                        }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                ShowErrorWindow($"Failed to force checkpoint: {ex.Message}");
-                UpdateCheckpointStatus("Checkpoint status: failed (exception).");
-            }
+                catch (Exception ex)
+                {
+                    ShowErrorWindow($"Failed to force checkpoint: {ex.Message}");
+                    UpdateCheckpointStatus("Checkpoint status: failed (exception).");
+                }
+            });
         }
     }
 
     private void HaloCEButton_OnClick(object? sender, RoutedEventArgs e)
     {
         _gameSelected = "OGHaloCE";
-        TryAttachToSelectedGame();
+        Task.Run(TryAttachToSelectedGame);
     }
 
     private void MCCButton_OnClick(object? sender, RoutedEventArgs e)
     {
         _gameSelected = "MCC";
-        TryAttachToSelectedGame();
+        Task.Run(TryAttachToSelectedGame);
     }
 
     private string CheckWhichMCCGameIsRunning(bool showErrors)
@@ -374,7 +385,7 @@ public partial class MainWindow : Window
                         continue;
                     }
                     _ = waitpid(pid, out _, Wuntraced);
-                    
+
                     // Having the dll load isn't sufficient enough. We need to check out the value from the targeted address...
                     // ... and make sure it returns a value only when the respective game is running (or loading, shhhhhh)
                     IntPtr result = ptrace(PtracePeekdata, pid, targetAddress, IntPtr.Zero);
@@ -395,12 +406,8 @@ public partial class MainWindow : Window
                 {
                     DetachProcess(pid);
                 }
-
-                // "Are you sure you need all these Detaches?" No, but I'd rather have them than not.
-                DetachProcess(pid);
             }
             attempts++;
-            DetachProcess(pid);
         }
 
         if (showErrors)
@@ -408,7 +415,6 @@ public partial class MainWindow : Window
             ShowErrorWindow(
                 $"No games in The Master Chief Collection appear to be running or the game process is occupied by another program, such as PINCE.");
         }
-        DetachProcess(pid);
 
         return "none";
     }
