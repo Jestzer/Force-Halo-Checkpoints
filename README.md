@@ -7,7 +7,7 @@ Features:
 - Can bind a keyboard key and controller button/trigger to force a checkpoint, so you don't have to switch to this program to force a checkpoint.
 
 Notes:
--**AI/LLM disclaimer: I used an LLM to help me finish the Linux port of this program. This included making it more consistently poke memory, support a larger variety of controllers, and some UI work.**
+- **AI/LLM disclaimer: I used an LLM to help me finish the Linux port of this program. This included making it more consistently poke memory, support a larger variety of controllers, and some UI work.**
 - To download and install the program, download the latest release from the right-hand side of the screen. Unzip the contents downloaded and then run the program. The program is portable, so you can put it in any folder you'd like.
 - Requires .NET Desktop Runtime 8.0 to be installed. If you don't already have this, you will be told so and prompted to download it.
 - Only supports the latest update of MCC.
