@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Force.Halo.Checkpoints"
         mc:Ignorable="d"
-        Title="Force Halo Checkpoints" Height="540" Width="400"
+        Title="Force Halo Checkpoints" Height="572" Width="400"
         WindowStyle="None" AllowsTransparency="True" ResizeMode="NoResize" WindowStartupLocation="CenterScreen"
         KeyDown="ForceCheckpointWithEnterKey">
     <Border BorderBrush="Gray" BorderThickness="1">
@@ -141,7 +141,7 @@
                         </ControlTemplate>
                     </Button.Template>
                 </Button>
-                <Button x:Name="ForceCheckpointButton" Content="Force Checkpoint" HorizontalAlignment="Center" Margin="0,401,0,0" VerticalAlignment="Top" Click="ForceCheckpointButton_Click" Width="262" Foreground="White" Height="51">
+                <Button x:Name="ForceCheckpointButton" Content="Force Checkpoint" HorizontalAlignment="Center" Margin="0,433,0,0" VerticalAlignment="Top" Click="ForceCheckpointButton_Click" Width="262" Foreground="White" Height="51">
                     <Button.Template>
                         <ControlTemplate TargetType="{x:Type Button}">
                             <Border x:Name="border" Background="#FF464646" BorderBrush="#FF1E699B" BorderThickness="2">
@@ -204,7 +204,7 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="202,191,7,112">
                     <TextBlock x:Name="StatusTextBlock" Text="Status: Awaiting game selection" TextWrapping="Wrap" Foreground="White" Margin="0" Width="Auto" Height="Auto"/>
                 </ScrollViewer>
-                <Button x:Name="HaloCEOGButton" Content="Halo: Combat Evolved" HorizontalAlignment="Left" Margin="30,15,0,0" VerticalAlignment="Center" Click="HaloCEOGButton_Click" Width="131" Foreground="White">
+                <Button x:Name="HaloCEOGButton" Content="Halo: Combat Evolved" HorizontalAlignment="Left" Margin="30,250,0,0" VerticalAlignment="Top" Click="HaloCEOGButton_Click" Width="131" Foreground="White">
                     <Button.Template>
                         <ControlTemplate TargetType="{x:Type Button}">
                             <Border x:Name="border" Background="#FF464646" BorderBrush="#FF1E699B" BorderThickness="2">
@@ -255,6 +255,23 @@
                         </ControlTemplate>
                     </Button.Template>
                 </Button>
+                <Button x:Name="CampaignEvolvedButton" Content="Halo: Campaign Evolved" HorizontalAlignment="Left" Margin="30,346,0,0" VerticalAlignment="Top" Click="CampaignEvolvedButton_Click" Width="145" Foreground="White">
+                    <Button.Template>
+                        <ControlTemplate TargetType="{x:Type Button}">
+                            <Border x:Name="border" Background="#FF464646" BorderBrush="#FF1E699B" BorderThickness="2">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="border" Property="Background" Value="Gray" />
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="border" Property="Background" Value="#FFCECECE" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
                 <Label x:Name="ControllerButtonBindingLabel" Content="Controller button binding" HorizontalAlignment="Left" Margin="198,116,0,0" VerticalAlignment="Top" Width="154" Foreground="White" RenderTransformOrigin="0.533,1.296"/>
                 <Button x:Name="RecordControllerInputButton" Content="Start Recording Input" HorizontalAlignment="Left" Margin="202,166,0,0" VerticalAlignment="Top" Click="RecordControllerInputButton_Click" Width="150" Foreground="White">
                     <Button.Template>
@@ -275,7 +292,7 @@
                 </Button>
                 <TextBox x:Name="ControllerButtonBindingTextBlock" HorizontalAlignment="Left" Margin="202,142,0,0" Text="" VerticalAlignment="Top" Width="150" Background="#FF464646" Foreground="White"
                     IsReadOnly="True"/>
-                <TextBlock x:Name="GameSelectedTextBlock" Text="Game selected: None" TextWrapping="Wrap" Foreground="White" Margin="34,348,201,122"/>
+                <TextBlock x:Name="GameSelectedTextBlock" Text="Game selected: None" TextWrapping="Wrap" Foreground="White" Margin="34,380,201,122"/>
                 <Label Content="Master Chief Collection" x:Name="MCCLabel" HorizontalAlignment="Left" Margin="23,25,0,0" VerticalAlignment="Top" Height="23" Width="139" Foreground="White"/>
                 <Border BorderBrush="#FF1E699B" BorderThickness="2" HorizontalAlignment="Left" Height="215" Margin="22,25,0,0" VerticalAlignment="Top" Width="154"/>
             </Grid>

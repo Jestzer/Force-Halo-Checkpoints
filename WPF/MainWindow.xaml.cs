@@ -209,7 +209,8 @@ namespace Force.Halo.Checkpoints
         {
             while (isProgramClosing == false)
             {
-                if (gameSelected != "Halo 2 Vista" && gameSelected != "Halo Custom Edition" && gameSelected != "Halo CE OG")
+                if (gameSelected != "Halo 2 Vista" && gameSelected != "Halo Custom Edition" && gameSelected != "Halo CE OG"
+                    && gameSelected != "Halo Campaign Evolved")
                 {
                     string processName = "EasyAntiCheat";
                     int processID = GetProcessIdByName(processName);
@@ -231,7 +232,9 @@ namespace Force.Halo.Checkpoints
                         });
                     }
                 }
-                else if (gameSelected == "Halo Custom Edition" || gameSelected == "Halo CE OG")
+                // Campaign Evolved doesn't use Easy Anti-Cheat, so there's nothing to watch for.
+                else if (gameSelected == "Halo Custom Edition" || gameSelected == "Halo CE OG"
+                    || gameSelected == "Halo Campaign Evolved")
                 {
                     Dispatcher.Invoke(() =>
                     {
@@ -874,6 +877,14 @@ namespace Force.Halo.Checkpoints
             StatusTextBlock.Text = "Status: Awaiting input";
         }
 
+        private void CampaignEvolvedButton_Click(object sender, RoutedEventArgs e)
+        {
+            GameSelectedTextBlock.Text = "Game selected: Halo: Campaign Evolved";
+            gameSelected = "Halo Campaign Evolved";
+            friendlyGameName = "Halo: Campaign Evolved";
+            StatusTextBlock.Text = "Status: Awaiting input";
+        }
+
         private void CheckIfGameIsRunning(string gameSelected, out bool gameIsRunning)
         {
             gameIsRunning = true;
@@ -1223,6 +1234,21 @@ namespace Force.Halo.Checkpoints
                             else if (gameSelected == "Halo 2 Vista")
                             {
                                 ForceCheckpoint("Halo 2 Vista", "halo2.exe", 0x482250);
+                            }
+                            else if (gameSelected == "Halo Campaign Evolved")
+                            {
+                                // This one lives in CampaignEvolved.cs. It's Unreal Engine on the
+                                // outside but still Blam underneath, and the simulation only loads
+                                // once you're in a mission, so it does its own checks rather than
+                                // going through CheckIfGameIsRunning.
+                                if (CampaignEvolved.TryForceCheckpoint(out string campaignEvolvedMessage))
+                                {
+                                    StatusTextBlock.Text = "Status: " + campaignEvolvedMessage;
+                                }
+                                else
+                                {
+                                    ShowErrorWindow(campaignEvolvedMessage);
+                                }
                             }
                             else
                             {
