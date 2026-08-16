@@ -3,7 +3,7 @@ _**You must turn off Easy Anti-Cheat and/or Anti-Cheat before using this program
 
 Features:
 - Forces a checkpoint to occur in the campaign of Windows Halo games. This is useful for practicing mission completion strategies.
-- Support all games in the MCC (Steam and Windows Store versions), the original Halo CE for Windows, Halo Custom Edition, and Halo 2 Vista with and without the Silent Cartographer mod.
+- Support all games in the MCC (Steam and Windows Store versions), the original Halo CE for Windows, Halo Custom Edition, Halo 2 Vista with and without the Silent Cartographer mod, and Halo: Campaign Evolved.
 - Can bind a keyboard key and controller button/trigger to force a checkpoint, so you don't have to switch to this program to force a checkpoint.
 
 Notes:
@@ -13,6 +13,7 @@ Notes:
 - Only supports the latest update of MCC.
 - Only supports solo gameplay. Does not work in co-op and probably never will unless players sync checkpoints together.
 - You need to select which game you want to force a checkpoint in. The first 6 games are for the MCC.
+- Halo: Campaign Evolved has only been tested against the Microsoft Store version.
 - If you have both the Windows Store and Steam versions of the MCC running, then it's only going to use one of them and there is no option to pick between them at the moment (as I suspect nobody will care about this.) Switching between the 2 should be fine.
 - I have only tested this on 2 computers using Windows 11, which may mean you will run into some bugs. Please report them!
 - Should support Windows 8.1 and newer. If you get XInput 1.4 working on Windows 7 (or this program at all working on it), then it may work there too. Otherwise, if you're on Windows 7, just don't use the controller button binding.

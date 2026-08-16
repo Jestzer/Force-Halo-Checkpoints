@@ -40,7 +40,9 @@ namespace Force.Halo.Checkpoints
         // when a patch moves the struct they move together - the delta survives, the
         // absolute address doesn't.
         //
-        // Confirm this with BlamSaveProbe.ps1 -Mode Watch, then set it here.
+        // 0 means we write to the anchor itself, i.e. the flag game_saving reads. Setting
+        // that is enough to kick the save system into actually producing a checkpoint,
+        // which is confirmed working in game as of 1.111.2544.0.
         // (game_revert is anchor+5, i.e. 0x1357072, if you ever want a revert button.)
         private const int CheckpointRequestDelta = 0;
 
