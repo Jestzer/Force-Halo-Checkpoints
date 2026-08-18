@@ -9,10 +9,10 @@ Features:
 Notes:
 - **AI/LLM disclaimer: I used an LLM to help me finish the Linux port of this program. This included making it more consistently poke memory, support a larger variety of controllers, and some UI work. It also fixed a merging mess I put myself into.**
 - To download and install the program, download the latest release from the right-hand side of the screen. Unzip the contents downloaded and then run the program. The program is portable, so you can put it in any folder you'd like.
-- Requires .NET Desktop Runtime 8.0 to be installed. If you don't already have this, you will be told so and prompted to download it.
+- Requires .NET Desktop Runtime 8.0 to be installed on Windows. If you don't already have this, you will be told so and prompted to download it.
 - Only supports the latest update of MCC.
 - MCC Only supports solo gameplay. MCC does not support co-op and probably never will unless players sync checkpoints together. Halo Campaign Evolved players may rejoice: It does work on co-op! I've only tested it as host, but when the host uses it, it seems to work for everybody and does not de-sync the game.
-- You need to select which game you want to force a checkpoint in. The first 6 games are for the MCC.
+- On Windows, you need to select which game you want to force a checkpoint in. The first 6 games are for the MCC.
 - Halo: Campaign Evolved has only been tested against the Microsoft Store version.
 - If you have both the Windows Store and Steam versions of the MCC running, then it's only going to use one of them and there is no option to pick between them at the moment (as I suspect nobody will care about this.) Switching between the 2 should be fine.
 - I have only tested this on 2 computers using Windows 11 and Fedora 44, which may mean you will run into some bugs. Please report them!
@@ -22,7 +22,7 @@ Notes:
 - The Enter and Print Screen buttons cannot be used as hotkeys. I don't intend to add them (except maybe the Enter key, if people really want it.)
 - If the hotkeys don't seem to be working, try clicking the checkpoint button. There's a chance you have Halo running as an admin, but not the program to force the checkpoint.
 
-  For folks looking at the source code, the WPF folder is the original, Windows version of this program. I have made a version that also  works on Linux and uses Avalonia.
+  For folks looking at the source code, the WPF folder is the original, Windows version of this program. I have made a version that also works on Linux and uses Avalonia instead.
 
 
   By the way, if you just want the console command to force a checkpoint in Halo: Custom Edition, it's "game_save_totally_unsafe". You need to enable devmode to use this, or else you'll get an error stating that the command cannot be executed at this time.
