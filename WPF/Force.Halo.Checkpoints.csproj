@@ -10,6 +10,36 @@
 		<ApplicationIcon>icon.ico</ApplicationIcon>
 	</PropertyGroup>
 
+	<PropertyGroup>
+		<!--
+			Publish settings for the Windows release. The goal here is one file in the zip.
+
+			Publish with:  dotnet publish -c Release -r win-x64
+
+			The .exe was already self-contained and single-file, but WPF's native bits
+			(wpfgfx_cor3.dll, PresentationNative_cor3.dll, D3DCompiler_47_cor3.dll,
+			PenImc_cor3.dll, vcruntime140_cor3.dll) sat next to it, along with a .config and a
+			.pdb - eight files unzipped. IncludeNativeLibrariesForSelfExtract pulls the native
+			DLLs into the bundle and IncludeAllContentForSelfExtract does the same for the
+			.config, which leaves just the .exe.
+
+			The trade-off: those native DLLs get unpacked to a temp folder on first run, so the
+			first start is a little slower, and self-extracting executables are the kind of
+			thing antivirus likes to complain about. If that turns into a support headache,
+			drop IncludeNativeLibrariesForSelfExtract and ship six files instead of one.
+
+			NativeAOT is deliberately not used here - WPF doesn't support it. That's why the
+			Windows build stays JIT while the Linux one is AOT.
+		-->
+		<PublishSingleFile>true</PublishSingleFile>
+		<SelfContained>true</SelfContained>
+		<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+		<IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+		<EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+		<DebugType>none</DebugType>
+		<SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+	</PropertyGroup>
+
 	<ItemGroup>
 	  <Content Include="icon.ico" />
 	</ItemGroup>
