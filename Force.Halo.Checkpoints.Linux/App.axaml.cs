@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Avalonia.Markup.Xaml;
 using Force.Halo.Checkpoints.Linux.ViewModels;
@@ -32,6 +33,11 @@ public partial class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
+    // Stock Avalonia template code. It only reads the plugin list to take the data
+    // annotation validator back out of it, so the reflection the trimmer is worried about
+    // is in a code path this program removes rather than uses.
+    [UnconditionalSuppressMessage("Trimming", "IL2026",
+        Justification = "Only enumerates the validator list in order to remove an entry from it.")]
     private void DisableAvaloniaDataAnnotationValidation()
     {
         // Get an array of plugins to remove

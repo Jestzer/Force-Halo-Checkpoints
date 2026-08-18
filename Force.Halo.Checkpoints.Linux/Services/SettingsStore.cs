@@ -1,8 +1,19 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Force.Halo.Checkpoints.Linux.Services;
+
+/// Source-generated serialization for the settings file.
+///
+/// This isn't a micro-optimisation, it's load-bearing: the Linux build publishes with
+/// NativeAOT, and reflection-based JSON does not survive that. It fails silently, so what
+/// you actually see is the program forgetting your hotkey bindings every launch rather
+/// than throwing anything. Keep every type that hits the settings file listed here.
+[JsonSourceGenerationOptions(WriteIndented = true)]
+[JsonSerializable(typeof(HotkeySettings))]
+internal sealed partial class SettingsJsonContext : JsonSerializerContext;
 
 internal static class SettingsStore
 {
@@ -20,7 +31,7 @@ internal static class SettingsStore
             }
 
             string json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize<HotkeySettings>(json) ?? HotkeySettings.Empty;
+            return JsonSerializer.Deserialize(json, SettingsJsonContext.Default.HotkeySettings) ?? HotkeySettings.Empty;
         }
         catch
         {
@@ -42,7 +53,7 @@ internal static class SettingsStore
 
             string path = GetSettingsPath();
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+            string json = JsonSerializer.Serialize(settings, SettingsJsonContext.Default.HotkeySettings);
             File.WriteAllText(path, json);
         }
         catch

@@ -22,6 +22,28 @@
     <FileVersion>1.1.1.0</FileVersion>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <!--
+      The Linux build publishes with NativeAOT: one native binary, no .NET runtime to
+      install, and a much faster start.
+
+      Publish with:  dotnet publish -c Release -r linux-x64
+
+      AOT needs a RID, so a publish without -r will fail. That's deliberate; there is no
+      such thing as a portable AOT build.
+
+      Release-only on purpose. The AOT and trim analyzers are what catch code that compiles
+      fine but misbehaves once trimmed, and they earn their keep - reflection-based JSON
+      was exactly that, silently forgetting everyone's hotkey bindings rather than throwing
+      anything. But they also flag three unused functions in the vendored SDL2-CS source
+      (SDL_ShowMessageBox, SDL_LoadBMP_RW, SDL_LoadWAV) that we can't fix and don't call,
+      and that noise isn't worth carrying on every Debug build. So: quiet while you work,
+      strict when you ship. Don't silence a warning here to make it go away - fix it.
+    -->
+    <PublishAot>true</PublishAot>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
   <ItemGroup>
     <Folder Include="Models\" />
     <AvaloniaResource Include="Assets\**" />

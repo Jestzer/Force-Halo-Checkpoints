@@ -5,6 +5,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Force.Halo.Checkpoints.Linux.Services;
 
@@ -30,7 +31,7 @@ namespace Force.Halo.Checkpoints.Linux.Services;
 /// loop until it gets lucky. process_vm_readv/process_vm_writev need neither: they don't
 /// stop the process, they don't need root as long as you own the game, and they can pull
 /// the whole 2MB .rdata section over in about 4ms, which the resolver below needs.
-internal static class CampaignEvolved
+internal static partial class CampaignEvolved
 {
     // Under Proton, Wine sets the process command line to the Windows-style path of the
     // .exe, so this matches regardless of whether it was launched by Steam, Lutris,
@@ -107,6 +108,13 @@ internal static class CampaignEvolved
         public int EvaluateRva { get; set; }
         public int AnchorRva { get; set; }
     }
+
+    /// Source-generated, for the same reason SettingsStore is: the Linux build is
+    /// NativeAOT and reflection-based JSON silently does nothing there. Losing this cache
+    /// would only cost a few milliseconds per launch, but it would do it quietly, which is
+    /// worse than costing something loudly.
+    [JsonSerializable(typeof(CachedOffsets))]
+    private sealed partial class OffsetsJsonContext : JsonSerializerContext;
 
     private static CachedOffsets? sessionCache;
     private static readonly object cacheLock = new();
@@ -738,7 +746,7 @@ internal static class CampaignEvolved
                 return null;
             }
 
-            return JsonSerializer.Deserialize<CachedOffsets>(File.ReadAllText(CacheFilePath));
+            return JsonSerializer.Deserialize(File.ReadAllText(CacheFilePath), OffsetsJsonContext.Default.CachedOffsets);
         }
         catch (Exception)
         {
@@ -752,7 +760,7 @@ internal static class CampaignEvolved
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(CacheFilePath)!);
-            File.WriteAllText(CacheFilePath, JsonSerializer.Serialize(offsets));
+            File.WriteAllText(CacheFilePath, JsonSerializer.Serialize(offsets, OffsetsJsonContext.Default.CachedOffsets));
         }
         catch (Exception)
         {
