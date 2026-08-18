@@ -18,9 +18,8 @@ namespace Force.Halo.Checkpoints
     /// a mission. So the questions, "is the game running?" and "can I force a checkpoint?" are separate.
     public static class CampaignEvolved
     {
-        // Xbox/Microsoft Store (GDK) build. If the Steam build ever uses a different
-        // process name, add it here - the module name is the same either way. I wouldn't know because
-        // I refunded it because it ran like absolute shit originally.
+        // Both the Xbox/Microsoft Store (GDK) build and the Steam build call themselves
+        // this, and they use the same module name too, so one entry covers both.
         private static readonly string[] processNames = ["HaloCampaignEvolved"];
 
         public const string ModuleName = "HaloSimulation_tag_release.dll";
@@ -31,9 +30,16 @@ namespace Force.Halo.Checkpoints
         // is a "cmp byte ptr [rip+disp32], 0" against the blam! save globals. Decoding that
         // one instruction gives us the save globals block without scanning anything.
         //
-        // Known-good for HaloSimulation_tag_release.dll 1.111.2544.0:
-        private const int KnownEvaluateRva = 0x1E7270;   // game_saving evaluate proc
-        private const int KnownAnchorRva = 0x135706D;    // the byte that proc reads
+        // The two shipping builds put the evaluate proc in slightly different places, but
+        // both decode to the same save globals, so they share an anchor:
+        //
+        //   0x1E7270 - Microsoft Store (GDK) build, HaloSimulation_tag_release.dll 1.111.2544.0
+        //   0x1E7280 - Steam build (found on the Linux/Proton copy, same DLL version)
+        //
+        // These are only a fast path. Anything that doesn't match falls through to the
+        // resolver, which works the offsets out from scratch.
+        private static readonly int[] knownEvaluateRvas = [0x1E7270, 0x1E7280];   // game_saving evaluate procs
+        private const int KnownAnchorRva = 0x135706D;    // the byte those procs read
 
         // The byte we actually write 1 to, expressed as a delta from the anchor rather
         // than as an absolute RVA. Both bytes live in the same save-globals struct, so
@@ -46,7 +52,7 @@ namespace Force.Halo.Checkpoints
         // (game_revert is anchor+5, i.e. 0x1357072, if you ever want a revert button.)
         private const int CheckpointRequestDelta = 0;
 
-        // Bytes we expect at KnownEvaluateRva. 0x80 0x3D is "cmp byte ptr [rip+disp32], imm8".
+        // Bytes we expect at an evaluate proc. 0x80 0x3D is "cmp byte ptr [rip+disp32], imm8".
         private static readonly byte[] anchorOpcode = [0x80, 0x3D];
 
         private const int AnchorInstructionLength = 7;   // 80 3D <disp32> <imm8>
@@ -150,8 +156,8 @@ namespace Force.Halo.Checkpoints
 
                 if (processHandle == IntPtr.Zero)
                 {
-                    message = "Couldn't open Halo: Campaign Evolved. You may need to run this program as an administrator, " +
-                              "or you're running the Steam version I haven't tested against. Please submit a bug report if necessary.";
+                    message = "Couldn't open Halo: Campaign Evolved. You may need to run this program as an " +
+                              "administrator. Please submit a bug report if that isn't it.";
                     return false;
                 }
 
@@ -233,13 +239,18 @@ namespace Force.Halo.Checkpoints
                     return true;
                 }
 
-                // 3. The hardcoded offset from the build this was written against.
-                if (VerifyAnchor(processHandle, module.BaseAddress, KnownEvaluateRva, KnownAnchorRva))
+                // 3. The hardcoded offsets from the builds this was written against.
+                foreach (int knownEvaluateRva in knownEvaluateRvas)
                 {
+                    if (!VerifyAnchor(processHandle, module.BaseAddress, knownEvaluateRva, KnownAnchorRva))
+                    {
+                        continue;
+                    }
+
                     sessionCache = new CachedOffsets
                     {
                         Version = version,
-                        EvaluateRva = KnownEvaluateRva,
+                        EvaluateRva = knownEvaluateRva,
                         AnchorRva = KnownAnchorRva
                     };
                     SaveCache(sessionCache);

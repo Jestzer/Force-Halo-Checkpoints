@@ -249,6 +249,24 @@ public partial class MainWindow : Window
                     {
                         ModifyGameMemory("Halo CE (non-MCC)", "halo.exe", "halo.exe", 0x31973F, 1);
                     }
+                    else if (gameSelected == "CampaignEvolved")
+                    {
+                        // This one lives in Services/CampaignEvolved.cs. It's Unreal Engine on
+                        // the outside but still Blam underneath, and the simulation only loads
+                        // once you're in a mission, so it does its own process and module checks
+                        // instead of going through ModifyGameMemory.
+                        if (CampaignEvolved.TryForceCheckpoint(out string campaignEvolvedMessage))
+                        {
+                            UpdateCheckpointStatus("Checkpoint status: " + campaignEvolvedMessage);
+                            UpdateAttachStatus(true, "Halo: Campaign Evolved attach check: success.");
+                        }
+                        else
+                        {
+                            ShowErrorWindow(campaignEvolvedMessage);
+                            UpdateCheckpointStatus("Checkpoint status: " + campaignEvolvedMessage);
+                            UpdateAttachStatus(false, "Halo: Campaign Evolved not ready. Select a game to retry.");
+                        }
+                    }
                     else if (gameSelected == "MCC")
                     {
                         string gameName = CheckWhichMCCGameIsRunning(true);
@@ -300,6 +318,12 @@ public partial class MainWindow : Window
     private void MCCButton_OnClick(object? sender, RoutedEventArgs e)
     {
         _gameSelected = "MCC";
+        Task.Run(TryAttachToSelectedGame);
+    }
+
+    private void CampaignEvolvedButton_OnClick(object? sender, RoutedEventArgs e)
+    {
+        _gameSelected = "CampaignEvolved";
         Task.Run(TryAttachToSelectedGame);
     }
 
@@ -436,6 +460,23 @@ public partial class MainWindow : Window
         if (_gameSelected == "OGHaloCE")
         {
             TryAttachToProcess("halo.exe", "Halo CE (non-MCC)");
+            return;
+        }
+
+        if (_gameSelected == "CampaignEvolved")
+        {
+            // No ptrace attach to do here, so "attached" just means we found the game and
+            // it's far enough in for the simulation to be loaded.
+            switch (CampaignEvolved.GetState(out string campaignEvolvedMessage))
+            {
+                case CampaignEvolved.GameState.Ready:
+                    UpdateAttachStatus(true, "Halo: Campaign Evolved attach check: success.");
+                    break;
+                default:
+                    UpdateAttachStatus(false, campaignEvolvedMessage);
+                    break;
+            }
+
             return;
         }
 
